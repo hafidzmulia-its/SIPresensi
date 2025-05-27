@@ -71,6 +71,29 @@ class AttendanceReportPolicy
             || ($user->role === 'pembina' && $report->extra->pembina_id === $user->id);
     }
 
+    public function update(User $user, AttendanceReport $report)
+    {
+        // Admin always allowed
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        // Pembina of this extra allowed
+        if ($user->role === 'pembina' && $report->extra->pembina_id === $user->id) {
+            return true;
+        }
+
+        // Student only if this report is pending
+        if ($user->role === 'student'
+            && $report->extra->registrations()
+            ->where('user_id', $user->id)
+            ->exists() && $report->status === 'pending') {
+            return true;
+        }
+
+        return false;
+    }
+    
     public function delete(User $user, AttendanceReport $report)
     {
         // Admin only

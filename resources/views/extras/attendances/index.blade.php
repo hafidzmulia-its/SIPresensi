@@ -37,7 +37,7 @@
                 <td class="px-6 py-4 text-right space-x-2">
                   <a href="{{ route('attendances.show', $r) }}"
                      class="text-blue-600 dark:text-blue-400 hover:underline">{{ __('Lihat') }}</a>
-                  @can('approve', $r)
+                  @can('update', $r)
                     <a href="{{ route('attendances.edit', $r) }}"
                        class="text-yellow-600 dark:text-yellow-400 hover:underline">{{ __('Approve') }}</a>
                   @endcan

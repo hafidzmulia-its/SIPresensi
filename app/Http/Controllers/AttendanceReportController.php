@@ -117,7 +117,7 @@ class AttendanceReportController extends Controller
     public function edit(AttendanceReport $attendance)
     {
         // Only pembina/admin can edit (approve/reject)
-        $this->authorize('approve', $attendance);
+        $this->authorize('update', $attendance);
         return view('extras.attendances.edit', ['report' => $attendance]);
     }
 
