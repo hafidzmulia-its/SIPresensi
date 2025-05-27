@@ -19,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
     protected $policies = [
         'App\Models\Extra' => 'App\Policies\ExtraPolicy',
         'App\Models\ExtraRegistration' => 'App\Policies\ExtraRegistrationPolicy',
-        // 'App\Models\AttendanceReport' => 'App\Policies\AttendanceReportPolicy',
+        'App\Models\AttendanceReport' => 'App\Policies\AttendanceReportPolicy',
 
     ];
     public function register(): void

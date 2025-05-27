@@ -8,9 +8,8 @@
   <div class="py-6">
     <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-4">
       <a href="{{ route('extras.attendances.create', $extra) }}"
-         @can('create', App\Models\AttendanceReport::class)
          class="inline-block px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white rounded-md"
-         @endcan>
+         >
         + {{ __('Buat Laporan Presensi') }}
       </a>
 
@@ -27,8 +26,8 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             @forelse($reports as $idx => $r)
               <tr>
-                <td class="px-6 py-4">{{ $idx + 1 }}</td>
-                <td class="px-6 py-4">{{ $r->date}}</td>
+                <td class="px-6 py-4 text-gray-900 dark:text-gray-100">{{ $idx + 1 }}</td>
+                <td class="px-6 py-4 text-gray-900 dark:text-gray-100">{{ $r->date}}</td>
                 <td class="px-6 py-4">
                   <span class="px-2 py-1 rounded-full text-xs font-semibold
                     {{ $r->status === 'approved' ? 'bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-100' : ($r->status==='rejected' ? 'bg-red-100 dark:bg-red-700 text-red-800 dark:text-red-100' : 'bg-yellow-100 dark:bg-yellow-700 text-yellow-800 dark:text-yellow-100') }}">

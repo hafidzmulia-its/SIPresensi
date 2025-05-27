@@ -9,7 +9,7 @@ use App\Http\Controllers\ExtraRegistrationController;
 use App\Http\Controllers\AttendanceReportController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('welkam');
 });
 
 Route::get('/dashboard', function () {
@@ -26,6 +26,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('extras.attendances', AttendanceReportController::class)
          ->parameters(['attendances' => 'attendance'])
          ->shallow(); 
+    Route::get('attendances/{attendance}/pdf', 
+        [AttendanceReportController::class, 'pdf'])
+        ->name('attendances.pdf');
 });
 
 require __DIR__.'/auth.php';

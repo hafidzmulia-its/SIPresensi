@@ -10,7 +10,7 @@ use App\Models\AttendanceDetail;
 class AttendanceReport extends Model
 {
     protected $fillable = [
-        'extra_id','date','berita_acara','submitted_by','status'
+        'extra_id','date','berita_acara','submitted_by','status','image_path'
     ];
 
     public function extra()

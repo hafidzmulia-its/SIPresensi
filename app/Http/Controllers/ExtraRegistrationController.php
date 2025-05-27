@@ -17,6 +17,7 @@ class ExtraRegistrationController extends Controller
 
     public function index()
     {
+        $this->authorize('regis', Extra::class);
         $extras = Extra::with('pembina')->get();
 
         // 1) Pull the already-registered extras as a Collection

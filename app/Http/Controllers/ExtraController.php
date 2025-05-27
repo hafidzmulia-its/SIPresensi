@@ -58,6 +58,7 @@ class ExtraController extends Controller
 
     public function edit(Extra $extra)
     {
+        $this->authorize('update', $extra);
         $pembinas = User::where('role', 'pembina')->get();
         return view('extras.create', [ // reuse create form
             'extra'    => $extra,
