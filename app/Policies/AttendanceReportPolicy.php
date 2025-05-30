@@ -87,7 +87,11 @@ class AttendanceReportPolicy
         if ($user->role === 'student'
             && $report->extra->registrations()
             ->where('user_id', $user->id)
-            ->exists() && $report->status === 'pending') {
+            ->exists() && $report->status === 'pending' || $report->status === 'rejected') {
+            // Students can update their own pending or rejected reports
+            $report->status = 'pending';
+            $report->save();
+            
             return true;
         }
 
@@ -97,7 +101,9 @@ class AttendanceReportPolicy
     public function delete(User $user, AttendanceReport $report)
     {
         // Admin only
-        return $user->role === 'admin';
+        return $user->role==='admin' || 
+            $user->role==='pembina' ||
+            $user->role==='student' && in_array($report->status, ['pending','rejected']);
     }
     public function generatePdf(User $user, AttendanceReport $report): bool
     {

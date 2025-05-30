@@ -53,12 +53,26 @@ class ExtraRegistrationController extends Controller
         return back()->with('success', "Anda telah terdaftar di “{$extra->name}”.");
     }
 
-    public function destroy(Request $request, Extra $extra)
+    public function destroy(Request $request,$registrationId)
     {
-        auth()->user()
-            ->extrasAsStudent()
-            ->wherePivot('year', date('Y'))
-            ->detach($extra->id);
+         // Find the pivot entry by its ID and delete it
+    $pivot = auth()->user()
+        ->extrasAsStudent()
+        ->newPivotQuery()
+        ->where('id', $registrationId)
+        ->first();
+
+    // Retrieve the Extra model associated with the pivot entry
+    $extra = Extra::findOrFail($pivot->extra_id);
+
+    // Delete the pivot entry
+    auth()->user()
+        ->extrasAsStudent()
+        ->newPivotQuery()
+        ->where('id', $registrationId)
+        ->delete();
+
+    // return back()->with('success', "Pendaftaran berhasil dibatalkan.");
         // $registration->delete();
 
         return back()->with('success', "Pendaftaran di “{$extra->name}” dibatalkan.");

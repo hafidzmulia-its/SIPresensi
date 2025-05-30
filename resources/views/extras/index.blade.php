@@ -14,7 +14,7 @@
         </div>
     </x-slot>
 
-    <div class="py-6">
+    <div class="py-6 px-4">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if($extras->isEmpty())
                 <div class="text-center py-20 bg-white dark:bg-gray-800 rounded-lg shadow">

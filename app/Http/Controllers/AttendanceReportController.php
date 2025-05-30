@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Extra;
 use App\Models\ExtraRegistration;
 use App\Models\AttendanceReport;
+use Illuminate\Support\Facades\Auth;
+
+use Illuminate\Support\Facades\Storage;
 use PDF;
 
 class AttendanceReportController extends Controller
@@ -19,12 +22,53 @@ class AttendanceReportController extends Controller
 
      public function index(Extra $extra)
     {
-        // Students see only their own reports; pembina/admin see all
-        $this->authorize('create', $extra);
+         // Students see only their own reports; pembina/admin see all
+    $this->authorize('create', $extra);
 
-        $reports = $extra->reports()
-            ->with('reporter')
-            ->when(auth()->user()->role === 'student', function ($query) {
+    $user = Auth::user();
+
+    // Filter reports with status 'approved' for the given extra
+    $approvedReports = $extra->reports->where('status', 'approved');
+
+     // Determine whether to calculate for all students or only registered students
+    if ($user->role === 'student') {
+        // Count hadir, izin, sakit, alfa for the current user in approved reports
+        $hadir = $approvedReports->flatMap->details->where('student_id', $user->id)->where('presence', 'hadir')->count();
+        $izin = $approvedReports->flatMap->details->where('student_id', $user->id)->where('presence', 'izin')->count();
+        $sakit = $approvedReports->flatMap->details->where('student_id', $user->id)->where('presence', 'sakit')->count();
+        $alfa = $approvedReports->flatMap->details->where('student_id', $user->id)->where('presence', 'alfa')->count();
+        $meetings = $approvedReports->flatMap->details->where('student_id', $user->id)->count();
+    } else {
+        // Count hadir, izin, sakit, alfa for all students in approved reports
+        $hadir = $approvedReports->flatMap->details->where('presence', 'hadir')->count();
+        $izin = $approvedReports->flatMap->details->where('presence', 'izin')->count();
+        $sakit = $approvedReports->flatMap->details->where('presence', 'sakit')->count();
+        $alfa = $approvedReports->flatMap->details->where('presence', 'alfa')->count();
+        $meetings = $approvedReports->count();
+    }
+
+    // Total approved meetings for the given extra
+    
+
+    // Build summary for the given extra
+    $summary = [
+        'extra'    => $extra,
+        'hadir'    => $hadir,
+        'izin'     => $izin,
+        'sakit'    => $sakit,
+        'alfa'     => $alfa,
+        'meetings' => $meetings,
+    ];
+
+    $reports = $extra->reports()
+        ->with('reporter', 'details')
+        ->when(auth()->user()->role === 'student', function ($query) use ($user) {
+            // Apply whereHas only for students
+            $query->whereHas('details', function ($subQuery) use ($user) {
+                $subQuery->where('student_id', $user->id);
+            });
+        })
+        ->when(auth()->user()->role === 'student', function ($query) {
             // Students can only view reports for extras they are registered in
             $query->whereHas('extra.registrations', function ($subQuery) {
                 $subQuery->where('user_id', auth()->id());
@@ -36,11 +80,11 @@ class AttendanceReportController extends Controller
                 $subQuery->where('pembina_id', auth()->id());
             });
         })
-            ->latest()
-            ->get();
+        ->orderBy('date')
+        ->get();
 
-        return view('extras.attendances.index', compact('extra','reports'));
-    }
+    return view('extras.attendances.index', compact('extra', 'reports', 'summary', 'user'));
+}
 
     /** Show form to submit attendance for a new meeting */
     public function create(Extra $extra)
@@ -107,11 +151,28 @@ class AttendanceReportController extends Controller
     }
 
     /** Show a single report and its details */
-    public function show(AttendanceReport $attendance)
-    { 
-        $attendance->load('extra', 'reporter', 'details.student');
-        return view('extras.attendances.show', ['report' => $attendance]);
-    }
+
+public function show(AttendanceReport $attendance)
+{
+    $attendance->load('extra', 'reporter', 'details.student');
+
+    // Filter reports for the extra that are approved and order them by date
+    $filteredReports = $attendance->extra->reports()
+        ->where('status', 'approved')
+        ->orderBy('date')
+        ->get();
+
+    // Determine the index of the current report in the filtered list
+    $meetingIndex = $filteredReports->values()->search(function ($r) use ($attendance) {
+        return $r->id === $attendance->id;
+    }) + 1; // Add 1 to make it human-readable (1-based index)
+
+    return view('extras.attendances.show', [
+        'report' => $attendance,
+        'meetingIndex' => $meetingIndex,
+        'filteredReports' => $filteredReports,
+    ]);
+}
 
     /** Show approval form (status) */
     public function edit(AttendanceReport $attendance)
@@ -123,17 +184,51 @@ class AttendanceReportController extends Controller
 
     /** Approve or reject */
     public function update(Request $request, AttendanceReport $attendance)
-    {
-        // $this->authorize('approve', $attendance);
+{
+    $this->authorize('update', $attendance); // Checks edit permission
 
-        $data = $request->validate([
-            'status' => 'required|in:approved,rejected',
-        ]);
+    $data = $request->validate([
+        'date'                  => 'required|date',
+        'berita_acara'          => 'nullable|string',
+        'presence'              => 'required|array',
+        'presence.*.detail_id'  => 'required|exists:attendance_details,id',
+        'presence.*.status'     => 'required|in:hadir,izin,sakit,alfa',
+        'image'                 => 'nullable|image|max:2048',
+        'status'                => 'nullable|in:pending,approved,rejected', // optional
+    ]);
 
-        $attendance->update(['status' => $data['status']]);
+    $attendance->update([
+        'date'         => $data['date'],
+        'berita_acara' => $data['berita_acara'] ?? null,
+    ]);
 
-        return back()->with('success', __('Status updated.'));
+    // Handle image update
+    if ($request->hasFile('image')) {
+        // Delete old image if exists
+        if ($attendance->image_path) {
+            Storage::disk('public')->delete($attendance->image_path);
+        }
+        $path = $request->file('image')->store('reports', 'public');
+        $attendance->update(['image_path' => $path]);
     }
+
+    // Update each attendance detail
+    foreach ($data['presence'] as $entry) {
+        $attendance->details()->where('id', $entry['detail_id'])->update([
+            'presence' => $entry['status'],
+        ]);
+    }
+
+    // Only allow pembina/admin to change status
+    if (auth()->user()->can('approve', $attendance) && isset($data['status'])) {
+        $attendance->update(['status' => $data['status']]);
+    }
+
+    return redirect()
+        ->route('attendances.show', $attendance)
+        ->with('success', __('Presensi berhasil diperbarui.'));
+}
+
 
     /** (Optional) delete a report */
     public function destroy(AttendanceReport $attendance)

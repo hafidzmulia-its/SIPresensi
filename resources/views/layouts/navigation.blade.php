@@ -116,6 +116,38 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('extras.index')" :active="request()->routeIs('extras.*')">
+            {{ __('Ekstrakurikuler') }}
+        </x-responsive-nav-link>
+
+        <!-- Pendaftaran Ekstrakurikuler Link -->
+        @can('regis', \App\Models\Extra::class)
+        <x-responsive-nav-link :href="route('registrations.index')" :active="request()->routeIs('registrations.*')">
+            {{ __('Pendaftaran Ekstrakurikuler') }}
+        </x-responsive-nav-link>
+        @endcan
+
+        <!-- Presensi Ekstrakurikuler Dropdown -->
+        <div class="border-t border-gray-200 dark:border-gray-600">
+            <p class="px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400">{{ __('Presensi Ekstrakurikuler') }}</p>
+            @php
+                $user = Auth::user();
+                $extras = match($user->role) {
+                    'admin' => \App\Models\Extra::all(),
+                    'pembina' => \App\Models\Extra::where('pembina_id', $user->id)->get(),
+                    'student' => \App\Models\Extra::whereHas('registrations', function ($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    })->get(),
+                    default => collect(),
+                };
+            @endphp
+
+            @foreach($extras as $extra)
+                <x-responsive-nav-link :href="route('extras.attendances.index', ['extra' => $extra->id])">
+                    {{ $extra->name }}
+                </x-responsive-nav-link>
+            @endforeach
+        </div>
         </div>
 
         <!-- Responsive Settings Options -->
